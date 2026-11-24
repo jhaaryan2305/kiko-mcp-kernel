@@ -1,0 +1,36 @@
+{
+  "kernel_policy_version": "1.0.0",
+  "privacy_mode": "local_first_pii_redacted",
+  "tiers": {
+    "tier_0_silent": {
+      "requires_confirmation": false,
+      "rollback_required": false,
+      "allowed_tools": [
+        "os.read_active_window",
+        "os.semantic_file_search",
+        "life.get_calendar_events",
+        "mobility.estimate_eta"
+      ]
+    },
+    "tier_1_reversible": {
+      "requires_confirmation": false,
+      "rollback_required": true,
+      "ledger_backend": "sqlite_local_wal",
+      "allowed_tools": [
+        "os.organize_files",
+        "life.create_calendar_block",
+        "comms.create_draft"
+      ]
+    },
+    "tier_2_circuit_breaker": {
+      "requires_confirmation": true,
+      "elicitation_protocol": "mcp_interactive_card",
+      "allowed_tools": [
+        "comms.send_message",
+        "mobility.stage_ride_deeplink",
+        "web.submit_external_form",
+        "os.delete_file"
+      ]
+    }
+  }
+}
