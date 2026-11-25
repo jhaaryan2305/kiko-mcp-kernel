@@ -1,0 +1,26 @@
+{
+  "entry_id": "0b6f6c1e-4c1a-4f0e-9d2a-6a8e2f1b7c10",
+  "sequence": 41,
+  "kind": "undo",
+  "tool": "comms.create_draft",
+  "server": "kiko-comms-mcp",
+  "tier": "tier_1_reversible",
+  "policy_version": "1.1.0",
+  "intent_redacted": "draft message to [CONTACT_1]: running late",
+  "arguments_sha256": "24b12c41ca65323310da5901a9c59b19d3052d5277110d14374c6caf3fdd589c",
+  "status": "executed",
+  "recorded_at": "2026-11-26T09:14:02Z",
+  "executed_at": "2026-11-26T09:14:02Z",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "inverse": {
+    "strategy": "delete_created",
+    "arguments": {
+      "forward_arguments": {
+        "to": "Priya",
+        "body": "Running 10 min late",
+        "channel": "default"
+      },
+      "draft_id": "draft-7731"
+    }
+  }
+}

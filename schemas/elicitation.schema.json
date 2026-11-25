@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kiko:schema:elicitation:1",
+  "title": "K.I.K.O. Tier 2 Elicitation",
+  "description": "Approval request shown on the HUD's MCP Elicitation card, and the user's response. Both are exchanged on-device only. The response action values mirror MCP elicitation (accept | decline | cancel).",
+  "x-kiko-locality": "device_only",
+  "oneOf": [
+    { "$ref": "#/$defs/approval_request" },
+    { "$ref": "#/$defs/approval_response" }
+  ],
+  "$defs": {
+    "approval_request": {
+      "type": "object",
+      "required": [
+        "type", "request_id", "tool", "server", "tier", "policy_version",
+        "summary", "arguments_preview", "arguments_sha256", "irreversible", "side_effects",
+        "created_at", "expires_at"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "approval_request" },
+        "request_id": { "type": "string", "format": "uuid" },
+        "tool": { "$ref": "urn:kiko:schema:policy-tiers:1#/$defs/tool_name" },
+        "server": { "$ref": "urn:kiko:schema:policy-tiers:1#/$defs/server" },
+        "tier": { "const": "tier_2_circuit_breaker" },
+        "policy_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "summary": {
+          "type": "string",
+          "maxLength": 280,
+          "description": "Human-readable action, rendered locally with PII rehydrated (e.g. \"Send 'Running 10 min late' to Priya\")."
+        },
+        "arguments_preview": { "type": "object", "description": "The exact arguments that will execute, for display." },
+        "arguments_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "irreversible": { "const": true },
+        "side_effects": { "enum": ["local", "external"] },
+        "trace_id": { "type": "string", "pattern": "^[a-f0-9]{32}$" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "expires_at": { "type": "string", "format": "date-time", "description": "created_at + approval_ttl_seconds. Expired requests are recorded as `expired` and never execute." }
+      }
+    },
+    "approval_response": {
+      "type": "object",
+      "required": ["type", "request_id", "arguments_sha256", "action", "source", "responded_at"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "approval_response" },
+        "request_id": { "type": "string", "format": "uuid" },
+        "arguments_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Must equal the request's hash. The gateway re-hashes the arguments at execution time and refuses on mismatch."
+        },
+        "action": { "enum": ["accept", "decline", "cancel"] },
+        "source": { "const": "client_hud" },
+        "content": {
+          "type": "object",
+          "required": ["confirm"],
+          "additionalProperties": false,
+          "properties": { "confirm": { "type": "boolean" } }
+        },
+        "responded_at": { "type": "string", "format": "date-time" }
+      },
+      "if": { "properties": { "action": { "const": "accept" } } },
+      "then": {
+        "required": ["content"],
+        "properties": { "content": { "properties": { "confirm": { "const": true } } } }
+      }
+    }
+  }
+}

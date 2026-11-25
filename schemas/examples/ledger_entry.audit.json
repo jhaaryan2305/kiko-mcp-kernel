@@ -1,0 +1,20 @@
+{
+  "entry_id": "5d2e9a40-8b3f-4e6a-9c71-2f0d4b8e1a22",
+  "sequence": 42,
+  "kind": "audit",
+  "tool": "comms.send_message",
+  "server": "kiko-comms-mcp",
+  "tier": "tier_2_circuit_breaker",
+  "policy_version": "1.1.0",
+  "intent_redacted": "message [CONTACT_1]: running late",
+  "arguments_sha256": "2fb29ff246289109b80f60a17420babae67acb5500f3d14187b5ab5866fea567",
+  "status": "executed",
+  "recorded_at": "2026-11-26T09:14:03Z",
+  "executed_at": "2026-11-26T09:14:11Z",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "approval": {
+    "request_id": "9a7c3d12-1e5b-4f8a-b6d0-3c2e7f9a8b41",
+    "action": "accept",
+    "responded_at": "2026-11-26T09:14:10Z"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "type": "approval_request",
+  "request_id": "9a7c3d12-1e5b-4f8a-b6d0-3c2e7f9a8b41",
+  "tool": "comms.send_message",
+  "server": "kiko-comms-mcp",
+  "tier": "tier_2_circuit_breaker",
+  "policy_version": "1.1.0",
+  "summary": "Send 'Running 10 min late' to Priya",
+  "arguments_preview": {
+    "to": "Priya",
+    "body": "Running 10 min late"
+  },
+  "arguments_sha256": "2fb29ff246289109b80f60a17420babae67acb5500f3d14187b5ab5866fea567",
+  "irreversible": true,
+  "side_effects": "external",
+  "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736",
+  "created_at": "2026-11-26T09:14:03Z",
+  "expires_at": "2026-11-26T09:16:03Z"
+}

@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kiko-mcp-kernel"
+version = "0.1.0"
+description = "K.I.K.O. — Knowledge Injected Kernel Orchestrator. Your data stays local. Only intent hits the cloud."
+readme = "README.md"
+requires-python = ">=3.11"
+# The kernel core (policy, ledger, firewall, redactor) is stdlib-only by design.
+dependencies = []
+
+[project.optional-dependencies]
+servers = ["fastmcp>=2.3,<3"]
+aws = ["boto3>=1.34"]
+dev = ["jsonschema>=4.18"]
+
+[tool.setuptools]
+packages = ["kernel"]

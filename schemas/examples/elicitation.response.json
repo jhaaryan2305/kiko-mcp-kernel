@@ -1,0 +1,11 @@
+{
+  "type": "approval_response",
+  "request_id": "9a7c3d12-1e5b-4f8a-b6d0-3c2e7f9a8b41",
+  "arguments_sha256": "2fb29ff246289109b80f60a17420babae67acb5500f3d14187b5ab5866fea567",
+  "action": "accept",
+  "source": "client_hud",
+  "content": {
+    "confirm": true
+  },
+  "responded_at": "2026-11-26T09:14:10Z"
+}

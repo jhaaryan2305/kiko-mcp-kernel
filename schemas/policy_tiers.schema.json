@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kiko:schema:policy-tiers:1",
+  "title": "K.I.K.O. Policy Tiers",
+  "description": "Deterministic MCP tool risk classification for the 3-Tier Risk & Rollback Firewall. Tier invariants are pinned with const so they cannot be weakened by editing the policy file.",
+  "type": "object",
+  "required": ["kernel_policy_version", "privacy", "default_tier", "tiers", "tools"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "kernel_policy_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semver. Bump on any tier assignment change."
+    },
+    "privacy": { "$ref": "#/$defs/privacy" },
+    "default_tier": {
+      "const": "tier_2_circuit_breaker",
+      "description": "Fail closed: tools absent from `tools` are treated as Tier 2."
+    },
+    "tiers": {
+      "type": "object",
+      "required": ["tier_0_silent", "tier_1_reversible", "tier_2_circuit_breaker"],
+      "additionalProperties": false,
+      "properties": {
+        "tier_0_silent": { "$ref": "#/$defs/tier_0" },
+        "tier_1_reversible": { "$ref": "#/$defs/tier_1" },
+        "tier_2_circuit_breaker": { "$ref": "#/$defs/tier_2" }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": { "$ref": "#/$defs/tool_name" },
+      "additionalProperties": { "$ref": "#/$defs/tool" }
+    }
+  },
+  "$defs": {
+    "tool_name": {
+      "type": "string",
+      "pattern": "^(os|comms|life|mobility|web)\\.[a-z]+(_[a-z]+)*$",
+      "description": "<domain>.<verb_object>. Domain must match the owning server (kiko-<domain>-mcp)."
+    },
+    "server": {
+      "enum": ["kiko-os-mcp", "kiko-comms-mcp", "kiko-life-mcp", "kiko-mobility-mcp", "kiko-web-mcp"]
+    },
+    "tier_name": {
+      "enum": ["tier_0_silent", "tier_1_reversible", "tier_2_circuit_breaker"]
+    },
+    "privacy": {
+      "type": "object",
+      "required": ["mode", "egress", "pii_redaction", "pii_rehydration", "ledger_locality", "log_raw_content"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "const": "local_first_pii_redacted" },
+        "egress": { "const": "redacted_intent_only", "description": "Only redacted intent and redacted async job payloads leave the device." },
+        "pii_redaction": { "const": "on_device_before_egress" },
+        "pii_rehydration": { "const": "local_gateway_only", "description": "Placeholders are resolved only in the local FastMCP gateway, immediately before tool execution." },
+        "ledger_locality": { "const": "device_only" },
+        "log_raw_content": { "const": false }
+      }
+    },
+    "tier_0": {
+      "type": "object",
+      "required": ["level", "description", "requires_confirmation", "rollback_required", "ledger"],
+      "additionalProperties": false,
+      "properties": {
+        "level": { "const": 0 },
+        "description": { "type": "string" },
+        "requires_confirmation": { "const": false },
+        "rollback_required": { "const": false },
+        "ledger": { "const": "none" }
+      }
+    },
+    "tier_1": {
+      "type": "object",
+      "required": ["level", "description", "requires_confirmation", "rollback_required", "ledger", "ledger_backend", "ledger_write_before_execute"],
+      "additionalProperties": false,
+      "properties": {
+        "level": { "const": 1 },
+        "description": { "type": "string" },
+        "requires_confirmation": { "const": false },
+        "rollback_required": { "const": true },
+        "ledger": { "const": "undo" },
+        "ledger_backend": { "const": "sqlite_local_wal" },
+        "ledger_write_before_execute": { "const": true, "description": "Ledger first: if the inverse cannot be recorded, the action does not run." }
+      }
+    },
+    "tier_2": {
+      "type": "object",
+      "required": ["level", "description", "requires_confirmation", "rollback_required", "ledger", "ledger_backend", "elicitation_protocol", "approval_source", "approval_binding", "approval_ttl_seconds", "bypassable"],
+      "additionalProperties": false,
+      "properties": {
+        "level": { "const": 2 },
+        "description": { "type": "string" },
+        "requires_confirmation": { "const": true },
+        "rollback_required": { "const": false },
+        "ledger": { "const": "audit" },
+        "ledger_backend": { "const": "sqlite_local_wal" },
+        "elicitation_protocol": { "const": "mcp_elicitation" },
+        "approval_source": { "const": "client_hud", "description": "Only the local HUD can approve. Cloud components and AWS triggers cannot." },
+        "approval_binding": { "const": "arguments_sha256", "description": "An approval is valid only for the exact arguments it was shown." },
+        "approval_ttl_seconds": { "type": "integer", "minimum": 10, "maximum": 600 },
+        "bypassable": { "const": false }
+      }
+    },
+    "undo": {
+      "type": "object",
+      "required": ["strategy", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "strategy": {
+          "enum": ["restore_snapshot", "delete_created"],
+          "description": "restore_snapshot: revert to prior state captured in the ledger. delete_created: remove the object whose id was captured in the ledger."
+        },
+        "description": { "type": "string" }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "required": ["server", "tier", "side_effects", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "server": { "$ref": "#/$defs/server" },
+        "tier": { "$ref": "#/$defs/tier_name" },
+        "side_effects": { "enum": ["none", "local", "external"] },
+        "description": { "type": "string" },
+        "undo": { "$ref": "#/$defs/undo" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "tier": { "const": "tier_0_silent" } } },
+          "then": { "properties": { "side_effects": { "const": "none" } }, "not": { "required": ["undo"] } }
+        },
+        {
+          "if": { "properties": { "tier": { "const": "tier_1_reversible" } } },
+          "then": { "properties": { "side_effects": { "const": "local" } }, "required": ["undo"] }
+        },
+        {
+          "if": { "properties": { "tier": { "const": "tier_2_circuit_breaker" } } },
+          "then": { "properties": { "side_effects": { "enum": ["local", "external"] } }, "not": { "required": ["undo"] } }
+        },
+        {
+          "if": { "properties": { "side_effects": { "const": "external" } } },
+          "then": { "properties": { "tier": { "const": "tier_2_circuit_breaker" } } }
+        }
+      ]
+    }
+  }
+}

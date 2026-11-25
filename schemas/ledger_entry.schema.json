@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:kiko:schema:ledger-entry:1",
+  "title": "K.I.K.O. Ledger Entry",
+  "description": "One row of the local SQLite (WAL) ledger. Tier 1 actions write `undo` entries; Tier 2 actions write `audit` entries. Tier 0 reads are not recorded. Ledger rows are device-only and never leave the machine.",
+  "x-kiko-locality": "device_only",
+  "type": "object",
+  "required": [
+    "entry_id", "sequence", "kind", "tool", "server", "tier", "policy_version",
+    "intent_redacted", "arguments_sha256", "status", "recorded_at"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "entry_id": { "type": "string", "format": "uuid" },
+    "sequence": { "type": "integer", "minimum": 1, "description": "Monotonic per device. Agentic Ctrl+Z undoes the highest `executed` undo entry first." },
+    "kind": { "enum": ["undo", "audit"] },
+    "tool": { "$ref": "urn:kiko:schema:policy-tiers:1#/$defs/tool_name" },
+    "server": { "$ref": "urn:kiko:schema:policy-tiers:1#/$defs/server" },
+    "tier": { "enum": ["tier_1_reversible", "tier_2_circuit_breaker"] },
+    "policy_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "intent_redacted": {
+      "type": "string",
+      "description": "The redacted intent that produced this action, e.g. \"draft a reply to [CONTACT_1]\". Never raw user content."
+    },
+    "arguments_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$", "description": "Hash of the canonical (rehydrated) tool arguments." },
+    "status": {
+      "enum": ["pending", "executed", "failed", "undone", "declined", "expired"],
+      "description": "pending → executed | failed. undo: executed → undone. audit: pending → declined | expired when not approved."
+    },
+    "recorded_at": { "type": "string", "format": "date-time", "description": "Written before execution." },
+    "executed_at": { "type": "string", "format": "date-time" },
+    "undone_at": { "type": "string", "format": "date-time" },
+    "trace_id": { "type": "string", "pattern": "^[a-f0-9]{32}$", "description": "OpenTelemetry trace id. Spans carry only redacted data." },
+    "inverse": {
+      "type": "object",
+      "description": "Everything needed to reverse the action. May contain local data (file paths, object ids); it stays on-device.",
+      "required": ["strategy", "arguments"],
+      "additionalProperties": false,
+      "properties": {
+        "strategy": { "$ref": "urn:kiko:schema:policy-tiers:1#/$defs/undo/properties/strategy" },
+        "arguments": { "type": "object" }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "description": "Outcome of the Tier 2 elicitation, copied from the approval response.",
+      "required": ["request_id", "action", "responded_at"],
+      "additionalProperties": false,
+      "properties": {
+        "request_id": { "type": "string", "format": "uuid" },
+        "action": { "enum": ["accept", "decline", "cancel"] },
+        "responded_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "undo" } } },
+      "then": {
+        "properties": {
+          "tier": { "const": "tier_1_reversible" },
+          "status": { "enum": ["pending", "executed", "failed", "undone"] }
+        },
+        "required": ["inverse"],
+        "not": { "required": ["approval"] }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "audit" } } },
+      "then": {
+        "properties": {
+          "tier": { "const": "tier_2_circuit_breaker" },
+          "status": { "enum": ["pending", "executed", "failed", "declined", "expired"] }
+        },
+        "not": { "required": ["inverse"] }
+      }
+    },
+    {
+      "if": { "properties": { "kind": { "const": "audit" }, "status": { "enum": ["executed", "failed"] } } },
+      "then": {
+        "required": ["approval"],
+        "properties": { "approval": { "properties": { "action": { "const": "accept" } } } }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "undone" } } },
+      "then": { "required": ["executed_at", "undone_at"] }
+    }
+  ]
+}

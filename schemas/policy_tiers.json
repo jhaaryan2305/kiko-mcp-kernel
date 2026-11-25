@@ -1,36 +1,124 @@
 {
-  "kernel_policy_version": "1.0.0",
-  "privacy_mode": "local_first_pii_redacted",
+  "$schema": "./policy_tiers.schema.json",
+  "kernel_policy_version": "1.1.0",
+  "privacy": {
+    "mode": "local_first_pii_redacted",
+    "egress": "redacted_intent_only",
+    "pii_redaction": "on_device_before_egress",
+    "pii_rehydration": "local_gateway_only",
+    "ledger_locality": "device_only",
+    "log_raw_content": false
+  },
+  "default_tier": "tier_2_circuit_breaker",
   "tiers": {
     "tier_0_silent": {
+      "level": 0,
+      "description": "Read-only queries. Silent autonomous execution with zero side effects.",
       "requires_confirmation": false,
       "rollback_required": false,
-      "allowed_tools": [
-        "os.read_active_window",
-        "os.semantic_file_search",
-        "life.get_calendar_events",
-        "mobility.estimate_eta"
-      ]
+      "ledger": "none"
     },
     "tier_1_reversible": {
+      "level": 1,
+      "description": "Reversible local writes. Immediate execution; inverse recorded in the Undo Ledger before execution for Agentic Ctrl+Z.",
       "requires_confirmation": false,
       "rollback_required": true,
+      "ledger": "undo",
       "ledger_backend": "sqlite_local_wal",
-      "allowed_tools": [
-        "os.organize_files",
-        "life.create_calendar_block",
-        "comms.create_draft"
-      ]
+      "ledger_write_before_execute": true
     },
     "tier_2_circuit_breaker": {
+      "level": 2,
+      "description": "Irreversible or external actions. Hard circuit-breaker; executes only after explicit approval via MCP Elicitation.",
       "requires_confirmation": true,
-      "elicitation_protocol": "mcp_interactive_card",
-      "allowed_tools": [
-        "comms.send_message",
-        "mobility.stage_ride_deeplink",
-        "web.submit_external_form",
-        "os.delete_file"
-      ]
+      "rollback_required": false,
+      "ledger": "audit",
+      "ledger_backend": "sqlite_local_wal",
+      "elicitation_protocol": "mcp_elicitation",
+      "approval_source": "client_hud",
+      "approval_binding": "arguments_sha256",
+      "approval_ttl_seconds": 120,
+      "bypassable": false
+    }
+  },
+  "tools": {
+    "os.read_active_window": {
+      "server": "kiko-os-mcp",
+      "tier": "tier_0_silent",
+      "side_effects": "none",
+      "description": "Read the title and app of the frontmost window."
+    },
+    "os.semantic_file_search": {
+      "server": "kiko-os-mcp",
+      "tier": "tier_0_silent",
+      "side_effects": "none",
+      "description": "Search local files by meaning using an on-device index."
+    },
+    "os.organize_files": {
+      "server": "kiko-os-mcp",
+      "tier": "tier_1_reversible",
+      "side_effects": "local",
+      "description": "Move or rename local files into a target structure.",
+      "undo": {
+        "strategy": "restore_snapshot",
+        "description": "Move every file back to the original path recorded in the ledger."
+      }
+    },
+    "os.delete_file": {
+      "server": "kiko-os-mcp",
+      "tier": "tier_2_circuit_breaker",
+      "side_effects": "local",
+      "description": "Permanently delete a local file."
+    },
+    "comms.create_draft": {
+      "server": "kiko-comms-mcp",
+      "tier": "tier_1_reversible",
+      "side_effects": "local",
+      "description": "Create an unsent message draft.",
+      "undo": {
+        "strategy": "delete_created",
+        "description": "Delete the draft whose id was recorded in the ledger."
+      }
+    },
+    "comms.send_message": {
+      "server": "kiko-comms-mcp",
+      "tier": "tier_2_circuit_breaker",
+      "side_effects": "external",
+      "description": "Send a message to a contact."
+    },
+    "life.get_calendar_events": {
+      "server": "kiko-life-mcp",
+      "tier": "tier_0_silent",
+      "side_effects": "none",
+      "description": "List calendar events in a time window."
+    },
+    "life.create_calendar_block": {
+      "server": "kiko-life-mcp",
+      "tier": "tier_1_reversible",
+      "side_effects": "local",
+      "description": "Create a calendar block on the user's own calendar.",
+      "undo": {
+        "strategy": "delete_created",
+        "description": "Delete the event whose id was recorded in the ledger."
+      }
+    },
+    "mobility.estimate_eta": {
+      "server": "kiko-mobility-mcp",
+      "tier": "tier_0_silent",
+      "side_effects": "none",
+      "description": "Estimate travel time to a destination."
+    },
+    "mobility.stage_ride_deeplink": {
+      "server": "kiko-mobility-mcp",
+      "tier": "tier_2_circuit_breaker",
+      "side_effects": "external",
+      "description": "Stage a ride-hailing deeplink with pickup and destination."
+    },
+    "web.submit_external_form": {
+      "server": "kiko-web-mcp",
+      "tier": "tier_2_circuit_breaker",
+      "side_effects": "external",
+      "description": "Submit a form on an external website via headless browser."
     }
   }
 }
